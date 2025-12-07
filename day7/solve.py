@@ -18,43 +18,45 @@ def solve(mappa: list[list[str]]) -> tuple[int, int]:
     m: int = len(mappa[0])
     scores: list[list[int]] = [[0]*m for _ in range(n)]
 
-    start: tuple[int, int] = [(0, jdx) for jdx, val in enumerate(mappa[0]) if val == 'S'][0]
-    queue: list[tuple[int, int]] = deque([start])
 
-    while queue:
-        row, col = queue.popleft()
-
+    def dfs(row: int, col: int) -> int:
+        # exit case
         if not (0 <= row <= n-1 and 0 <= col <= m-1):
-            timelines += 1
-            continue
+            return 1
+
+        if mappa[row][col] == '|':
+            return scores[row][col]
 
         if mappa[row][col] in '.S':
+            score: int = dfs(row+1, col)
+            scores[row][col] = score
             mappa[row][col] = '|'
-            queue.append((row+1, col))
-            continue
+            return score
 
-        if mappa[row][col] == '^':
-            splitted += 1
-            mappa[row][col] = '#'
-            queue.append((row, col-1))
-            queue.append((row, col+1))
-            continue
+        # splitter case: '^'
+        mappa[row][col] = '#'
+        score: int = dfs(row, col-1) + dfs(row, col+1)
+        return score
+
+
+    start_row: int = 0
+    start_col: int = mappa[start_row].index('S')
+
+    timelines: int = dfs(start_row, start_col)
+
+    splitted: int = 0
+    for row in mappa:
+        splitted += row.count('#')
 
     return splitted, timelines
 
 
 if __name__ == '__main__':
     filename: str = 'example.txt'
-    # filename: str = 'puzzle.txt'
 
     mappa: list[list[str]] = load(filename)
 
     part_one, part_two = solve(mappa)
     print(f'Part I: {part_one}')
     print(f'Part II: {part_two}')
-
-    print('\nMappa:')
-    for row in mappa:
-        print(''.join(row))
-
 
