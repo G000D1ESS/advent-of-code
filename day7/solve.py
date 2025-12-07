@@ -43,11 +43,7 @@ def solve(mappa: list[list[str]]) -> tuple[int, int]:
     start_col: int = mappa[start_row].index('S')
 
     timelines: int = dfs(start_row, start_col)
-
-    splitted: int = 0
-    for row in mappa:
-        splitted += row.count('#')
-
+    splitted: int = sum(row.count('#') for row in mappa)
     return splitted, timelines
 
 
