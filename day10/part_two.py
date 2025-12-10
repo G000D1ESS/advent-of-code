@@ -92,6 +92,14 @@ def sa_worker(puzzle, timeout):
 
 
 def solve_parallel(puzzle):
+    puzzle_key: str = str(puzzle.joltage)
+    with open('memory.data', 'r') as memory:
+        for line in memory.readlines():
+            if puzzle_key in line:
+                _, minimal = line.split(':')
+                minimal = int(minimal)
+                return minimal
+
     with multiprocessing.Pool(WORKERS) as pool:
         results = [pool.apply_async(sa_worker, (puzzle, FIND_TIME_WINDOW)) for _ in range(WORKERS)]
         output = [r.get() for r in results]
@@ -101,99 +109,25 @@ def solve_parallel(puzzle):
         return -1
 
     print(f'[!] {puzzle.joltage} -> best minimal: {sum(best_state)} (energy: {best_energy})')
+    with open('memory.data', 'a') as memory:
+        memory.write(f'{puzzle_key}: {sum(best_state)}\n')
     return sum(best_state)
 
 
-def solve(puzzle: PuzzleInput) -> int:
-    # preparation
-    wanted_result: list[int] = puzzle.joltage
-    lights_count: int = len(wanted_result)
-    max_joltage: int = max(puzzle.joltage)
-
-    buttons: list[list[int]] = cast_buttons_to_list(puzzle.light_buttons, lights_count)
-    buttons_count: int = len(buttons)
-
-    # let's fire this puzzle!
-    state: list[int] = [random.randint(0, max_joltage) for _ in range(buttons_count)]
-    energy: float = get_energy(state, buttons, wanted_result)
-
-    best_state = state
-    best_energy = energy
-
-    T = TEMP_START
-
-    for step in range(MAX_STEPS):
-        if T < TEMP_END:
-            break
-
-        # generate new state
-        new_state = get_neighbor(state, T, max_joltage)
-        new_energy = get_energy(new_state, buttons, wanted_result)
-
-        dt_energy = new_energy - energy
-
-        # change state
-        if dt_energy < 0 or random.random() < math.exp(-dt_energy / T):
-            state = new_state
-            energy = new_energy
-
-            # updating best result
-            if energy < best_energy:
-                best_state = state
-                best_energy = energy
-
-        # Охлаждаем
-        T *= COOLING_FACTOR
-
-    # print('*' * 60)
-    # print('Current:\t', calc(best_state, buttons, lights_count))
-    # print('Needed:\t\t', puzzle.joltage)
-    # print('Used:\t\t', best_state, f'-> sum:', sum(best_state))
-    # print('*' * 60)
-    return best_state, calc(best_state, buttons, lights_count), wanted_result
-
-
-def solve_puzzle(puzzle_data: list[PuzzleInput]) -> int:
-    total: int = 0
-    for puzzle in puzzle_data:
-        idx: int = 0
-        minimal: int = int(1e6)
-
-        while idx < FIND_MIN_STEPS:
-            best_state, current_result, wanted_result = solve(puzzle)
-
-            if current_result != wanted_result:
-                # print('-' * 80)
-                # print('Rerun due to founded error')
-                # print('-' * 80)
-                continue
-
-            minimal = min(minimal, sum(best_state))
-            idx += 1
-
-        print(f'[!] {wanted_result} -> best minimal: {minimal}')
-        total += minimal
-    return total
-
-
-def solve_puzzlev2(puzzle_data: list[PuzzleInput]) -> int:
+def solve(puzzle_data: list[PuzzleInput]) -> int:
     total: int = 0
     for puzzle in puzzle_data:
         result = solve_parallel(puzzle)
         while result == -1:
-            print(f'Rerun: {puzzle.joltage}')
+            print(f'[?] Rerun: {puzzle.joltage}')
             result = solve_parallel(puzzle)
         total += result
     return total
 
 
 if __name__ == '__main__':
-    # filename: str = 'example.txt'
-    filename: str = 'puzzle.txt'
-
+    filename: str = 'example.txt'
     puzzle_data: list[PuzzleInput] = load(filename)
-
-    # part_two: int = solve_puzzle(puzzle_data)
-    part_two: int = solve_puzzlev2(puzzle_data)
+    part_two: int = solve(puzzle_data)
     print(f'Part II: {part_two}')
 
